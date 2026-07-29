@@ -1,8 +1,8 @@
 <?php
-declare(strict_types=1);
-
-$supabaseUrl = getenv('SUPABASE_URL') ?: '';
-$supabaseAnonKey = getenv('SUPABASE_ANON_KEY') ?: '';
+$envPath = __DIR__ . '/../.env';
+$env = file_exists($envPath) ? parse_ini_file($envPath) : [];
+$supabaseUrl = $env['SUPABASE_URL'] ?? '';
+$supabaseAnonKey = $env['SUPABASE_ANON_KEY'] ?? '';
 $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
 ?>
 <!DOCTYPE html>
@@ -10,39 +10,40 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Broken Oath — Seu Reino</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=IM+Fell+English:ital@0;1&family=MedievalSharp&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/assets/css/app.css">
+    <title>Broken Oath — Painel</title>
+    <link rel="stylesheet" href="css/dashboard.css">
 </head>
-<body class="dashboard-page">
-    <div class="world-background" aria-hidden="true">
-        <div class="vignette"></div>
-    </div>
-
-    <main class="dashboard-shell">
-        <section class="dashboard-card">
-            <p class="dashboard-kicker">Broken Oath</p>
-            <h1>Seu reino começa aqui.</h1>
-            <p id="dashboard-status">
-                Verificando sua linhagem...
-            </p>
-
-            <div class="dashboard-placeholder">
-                <h2>Primeiro marco</h2>
-                <p>
-                    Esta será a base para o mapa, cidade, recursos, exércitos
-                    e todos os sistemas do mundo persistente.
-                </p>
-            </div>
-
-            <button id="logout-button" class="primary-button" type="button">
-                Abandonar o Salão
+<body>
+    <div class="page-overlay"></div>
+    <header class="topbar">
+        <a class="brand" href="dashboard.php" aria-label="Voltar ao painel">
+            <img src="assets/logo.png" alt="Brasão Broken Oath">
+            <div><strong>Broken Oath</strong><span>Reinos em conflito, honra em jogo</span></div>
+        </a>
+        <div class="account">
+            <button id="account-button" class="account-button" type="button" aria-expanded="false" aria-controls="account-menu">
+                <span id="player-name">Fundar Cidade</span><span id="account-arrow" class="arrow" hidden>▾</span>
             </button>
+            <nav id="account-menu" class="account-menu" hidden>
+                <a id="fundar-cidade-link" href="fundar_cidade.php" hidden>Fundar Cidade</a>
+                <a href="#" data-action="account">Minha Conta</a>
+                <a href="#" data-action="name">Alterar nome</a>
+                <a href="#" data-action="password">Alterar senha</a>
+                <a href="#" class="danger" data-action="delete">Excluir conta</a>
+                <button id="logout-button" type="button">Sair</button>
+            </nav>
+        </div>
+    </header>
+    <main class="dashboard">
+        <section class="menu-grid" aria-label="Menu principal">
+            <a class="menu-card" href="mapa.php"><img src="assets/menu/mapa.png" alt="Mapa medieval aberto sobre uma mesa"><span>Mapa</span></a>
+            <a class="menu-card" href="cidade.php"><img src="assets/menu/cidade.png" alt="Cidade medieval fortificada"><span>Minha Cidade</span></a>
+            <a class="menu-card" href="diplomacia.php"><img src="assets/menu/diplomacia.png" alt="Pergaminho selado e pena de escrita"><span>Diplomacia</span></a>
+            <a class="menu-card" href="estatisticas-militares.php"><img src="assets/menu/estatisticas.png" alt="Espadas sobre relatório militar"><span>Estatísticas Militares</span></a>
         </section>
     </main>
-
+    <footer>Broken Oath — Versão Alpha</footer>
+    <div id="notice" class="notice" role="status" aria-live="polite"></div>
     <script>
         window.BROKEN_OATH_CONFIG = <?= json_encode([
             'supabaseUrl' => $supabaseUrl,
@@ -50,6 +51,7 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
             'configured' => $configured,
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?>;
     </script>
-    <script type="module" src="/assets/js/dashboard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/dashboard.js"></script>
 </body>
 </html>
