@@ -360,8 +360,29 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
                             <small class="ajuda">O nome precisa ser único apenas dentro do mundo escolhido.</small>
                         </div>
 
+
+<div class="campo">
+    <label for="perfil-cidade">3. Perfil da Cidade</label>
+
+    <select
+        id="perfil-cidade"
+        name="perfil-cidade"
+        required
+        disabled
+    >
+        <option value="">Selecione um perfil</option>
+        <option value="mercantil">Mercantil</option>
+        <option value="conquistadora">Conquistadora</option>
+        <option value="pacificadora">Pacificadora</option>
+    </select>
+
+    <small class="ajuda">
+        O perfil define a especialização inicial da cidade.
+    </small>
+</div>
+
                         <div class="campo">
-                            <label for="cidade">3. Nome da Cidade</label>
+                            <label for="cidade">4. Nome da Cidade</label>
                             <input
                                 type="text"
                                 id="cidade"
@@ -430,9 +451,10 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
 
             const atualizarCampos = () => {
                 const mundoSelecionado = mundoSelect.value !== '';
-                governanteInput.disabled = !mundoSelecionado;
-                cidadeInput.disabled = !mundoSelecionado;
-                button.disabled = !mundoSelecionado;
+                    governanteInput.disabled = !mundoSelecionado;
+                    cidadeInput.disabled = !mundoSelecionado;
+                    document.getElementById('perfil-cidade').disabled = !mundoSelecionado;
+                    button.disabled = !mundoSelecionado;
 
                 const mundo = mundos.find((item) => String(item.id) === mundoSelect.value);
 
@@ -506,36 +528,39 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
             };
 
             mundoSelect.addEventListener('change', () => {
-                limparStatus();
-                atualizarCampos();
-            });
+    limparStatus();
+    atualizarCampos();
+});
 
-            form.addEventListener('submit', async (event) => {
-                event.preventDefault();
-                limparStatus();
+form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    limparStatus();
 
-                const worldId = Number(mundoSelect.value);
-                const governante = normalizarNome(governanteInput.value);
-                const cidade = normalizarNome(cidadeInput.value);
+    const worldId = Number(mundoSelect.value);
+    const governante = normalizarNome(governanteInput.value);
+    const cidade = normalizarNome(cidadeInput.value);
+    const perfilCidade =
+        document.getElementById('perfil-cidade').value;
 
-                if (!Number.isInteger(worldId) || worldId <= 0) {
-                    mostrarStatus('Selecione um mundo válido.');
-                    return;
-                }
+    if (!Number.isInteger(worldId) || worldId <= 0) {
+        mostrarStatus('Selecione um mundo válido.');
+        return;
+    }
 
-                if (governante.length < 3 || cidade.length < 3) {
-                    mostrarStatus('Os nomes devem possuir pelo menos 3 caracteres.');
-                    return;
-                }
+    if (governante.length < 3 || cidade.length < 3) {
+        mostrarStatus('Os nomes devem possuir pelo menos 3 caracteres.');
+        return;
+    }
 
-                button.disabled = true;
-                button.textContent = 'Fundando...';
+    button.disabled = true;
+    button.textContent = 'Fundando...';
 
-                const { data, error } = await client.rpc('fundar_cidade', {
-                    p_world_id: worldId,
-                    p_nome_governante: governante,
-                    p_nome_cidade: cidade
-                });
+    const { data, error } = await client.rpc('fundar_cidade', {
+        p_world_id: worldId,
+        p_nome_governante: governante,
+        p_nome_cidade: cidade,
+        p_perfil_cidade: perfilCidade
+    });
 
                 if (error) {
                     const mensagem = error.message || '';
