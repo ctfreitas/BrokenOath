@@ -1,0 +1,3 @@
+ALTER TABLE public.cidade_governanca
+RENAME COLUMN nome_governante_npc
+TO nome_governante;
