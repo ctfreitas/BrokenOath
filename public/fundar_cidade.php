@@ -466,7 +466,7 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
 
                 const vagas = mundo.limite_jogadores - mundo.jogadores_atuais;
                 resumoMundo.textContent =
-                    `${mundo.nome} — velocidade ${mundo.velocidade}; ` +
+                    `${mundo.nome} — multiplicador de tempo ${mundo.multiplicador_tempo}; ` +
                     `${mundo.jogadores_atuais}/${mundo.limite_jogadores} jogadores; ` +
                     `${vagas} vaga${vagas === 1 ? '' : 's'} disponível${vagas === 1 ? '' : 'is'}.`;
                 resumoMundo.classList.add('visivel');
@@ -475,7 +475,7 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
             const carregarMundos = async () => {
                 const { data, error } = await client
                     .from('worlds')
-                    .select('id, nome, limite_jogadores, jogadores_atuais, velocidade')
+                    .select('id, nome, limite_jogadores, jogadores_atuais, multiplicador_tempo')
                     .order('id', { ascending: true });
 
                 if (error) {
@@ -602,23 +602,29 @@ form.addEventListener('submit', async (event) => {
     });
 
                 if (error) {
-                    const mensagem = error.message || '';
-                    const erros = {
-                        'GOVERNANTE_JA_EXISTE': 'Já existe um governante com esse nome neste mundo.',
-                        'CIDADE_JA_EXISTE': 'Já existe uma cidade com esse nome neste mundo.',
-                        'MUNDO_CHEIO': 'Este mundo atingiu o limite de jogadores.',
-                        'MUNDO_NAO_ENCONTRADO': 'O mundo selecionado não existe.',
-                        'USUARIO_NAO_AUTENTICADO': 'Sua sessão expirou. Entre novamente.',
-                        'NOME_INVALIDO': 'Informe nomes válidos para o governante e a cidade.'
-                    };
+    console.error('Erro retornado pela função de fundação:', error);
 
-                    const chave = Object.keys(erros).find((item) => mensagem.includes(item));
-                    mostrarStatus(chave ? erros[chave] : 'Não foi possível fundar a cidade. Tente novamente.');
+    const mensagem = error.message || '';
 
-                    button.disabled = false;
-                    button.textContent = 'Fundar Baronia';
-                    return;
-                }
+    const erros = {
+        'GOVERNANTE_JA_EXISTE': 'Já existe um governante com esse nome neste mundo.',
+        'CIDADE_JA_EXISTE': 'Já existe uma cidade com esse nome neste mundo.',
+        'MUNDO_CHEIO': 'Este mundo atingiu o limite de jogadores.',
+        'MUNDO_NAO_ENCONTRADO': 'O mundo selecionado não existe.',
+        'USUARIO_NAO_AUTENTICADO': 'Sua sessão expirou. Entre novamente.',
+        'NOME_INVALIDO': 'Informe nomes válidos para o governante e a cidade.'
+    };
+
+    const chave = Object.keys(erros).find((item) => mensagem.includes(item));
+
+    mostrarStatus(
+        chave ? erros[chave] : 'Não foi possível fundar a cidade. Tente novamente.'
+    );
+
+    button.disabled = false;
+    button.textContent = 'Fundar Baronia';
+    return;
+}
 
                 localStorage.setItem('broken_oath_cidade_ativa_id', String(data));
                 localStorage.setItem('broken_oath_governante_ativo', governante);

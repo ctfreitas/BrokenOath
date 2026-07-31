@@ -790,7 +790,22 @@ const renderCities = (coordinatesList) => {
 
                 const { data: city, error: cityError } = await client
                     .from('cidades')
-                    .select('id, user_id, world_id, nome_governante, nome_cidade, titulo_governante, nivel_cidade, perfil_cidade, tipo_entidade')
+                    .select(`
+                        id,
+                        user_id,
+                        world_id,
+                        nome_cidade,
+                        nivel_cidade,
+                        perfil_cidade,
+                        tipo_entidade,
+                        cidade_governanca (
+                            nome_governante,
+                            titulo_governante,
+                            nivel_governante,
+                            ativo,
+                            fim_governo
+                        )
+                    `)
                     .eq('id', activeCityId)
                     .eq('world_id', activeWorldId)
                     .eq('user_id', user.id)
@@ -821,7 +836,15 @@ const renderCities = (coordinatesList) => {
                 logicalHeight = Number(world.altura_mapa) || LOGICAL_HEIGHT_DEFAULT;
 
                 worldName.textContent = world.nome || 'Terras Antigas';
-                governorName.textContent = city.nome_governante || 'Governador';
+                const governancaAtiva = (city.cidade_governanca || []).find(
+                    (governanca) =>
+                        governanca.ativo === true &&
+                        governanca.fim_governo === null
+                );
+
+                governorName.textContent = governancaAtiva
+                    ? `${governancaAtiva.titulo_governante} ${governancaAtiva.nome_governante}`
+                   : 'Governador';
                 cityName.textContent = city.nome_cidade || 'Minha Cidade';
                 cityButton.href = `cidade.php?id=${encodeURIComponent(city.id)}`;
 
@@ -834,32 +857,31 @@ const {
     error: cityCoordinatesError
 } = await client
     .from('locais_mapa')
-    .select(`
-        mapa_id,
-        cidade_id,
-        codigo_local,
-        categoria,
-        tipo_local,
-        regiao,
-        mapa_coordenadas!inner (
-            x,
-            y,
-            sprite_offset_x,
-            sprite_offset_y,
-            sprite_width,
-            sprite_height,
-            world_id
-        ),
-        cidades (
-            id,
-            world_id,
-            nome_cidade,
-            nome_governante,
-            nivel_cidade,
-            perfil_cidade,
-            tipo_entidade
-        )
-    `)
+   .select(`
+    mapa_id,
+    cidade_id,
+    codigo_local,
+    categoria,
+    tipo_local,
+    regiao,
+    mapa_coordenadas!inner (
+        x,
+        y,
+        sprite_offset_x,
+        sprite_offset_y,
+        sprite_width,
+        sprite_height,
+        world_id
+    ),
+    cidades (
+        id,
+        world_id,
+        nome_cidade,
+        nivel_cidade,
+        perfil_cidade,
+        tipo_entidade
+    )
+`)
     .eq('mapa_coordenadas.world_id', activeWorldId)
     .or('cidade_id.not.is.null,codigo_local.like.FUND_%');
 
