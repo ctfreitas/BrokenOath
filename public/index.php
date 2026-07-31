@@ -568,6 +568,7 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
             const passwordInput = document.getElementById('senha');
             const loginButton = document.getElementById('login-button');
             const statusLogin = document.getElementById('status-login');
+            const rememberInput = document.getElementById('lembrar');
 
             const showStatus = (message, success = false) => {
                 statusLogin.textContent = message;
@@ -586,10 +587,47 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
                 return;
             }
 
+            const AUTH_REMEMBER_KEY = 'broken_oath_lembrar_login';
+
+            const authStorage = {
+                getItem(key) {
+                    const remember = localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+                    return remember
+                        ? localStorage.getItem(key)
+                        : sessionStorage.getItem(key);
+                },
+
+                setItem(key, value) {
+                    const remember = localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+                    if (remember) {
+                        localStorage.setItem(key, value);
+                        sessionStorage.removeItem(key);
+                    } else {
+                        sessionStorage.setItem(key, value);
+                        localStorage.removeItem(key);
+                    }
+                },
+
+                removeItem(key) {
+                    localStorage.removeItem(key);
+                    sessionStorage.removeItem(key);
+                }
+            };
+
             const client = window.supabase.createClient(
                 config.supabaseUrl,
-                config.supabaseAnonKey
-            );
+                config.supabaseAnonKey,
+                {
+                    auth: {
+                        storage: authStorage,
+                        persistSession: true,
+                        autoRefreshToken: true,
+                        detectSessionInUrl: true
+                    }
+                }
+);
 
             const verificarSessao = async () => {
     const parametros = new URLSearchParams(window.location.search);
@@ -643,6 +681,12 @@ verificarSessao();
 
                 loginButton.disabled = true;
                 loginButton.textContent = 'Entrando...';
+
+                if (rememberInput.checked) {
+                    localStorage.setItem(AUTH_REMEMBER_KEY, '1');
+                } else {
+                    localStorage.removeItem(AUTH_REMEMBER_KEY);
+}
 
                 const { data, error } = await client.auth.signInWithPassword({
                     email,

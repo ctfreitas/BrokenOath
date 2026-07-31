@@ -268,27 +268,73 @@ link.appendChild(nome);
         return;
     }
 
+    const AUTH_REMEMBER_KEY = 'broken_oath_lembrar_login';
+
+    const authStorage = {
+        getItem(key) {
+            const remember =
+                localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+            return remember
+                ? localStorage.getItem(key)
+                : sessionStorage.getItem(key);
+        },
+
+        setItem(key, value) {
+            const remember =
+                localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+            if (remember) {
+                localStorage.setItem(key, value);
+                sessionStorage.removeItem(key);
+            } else {
+                sessionStorage.setItem(key, value);
+                localStorage.removeItem(key);
+            }
+        },
+
+        removeItem(key) {
+            localStorage.removeItem(key);
+            sessionStorage.removeItem(key);
+        }
+    };
+
     const client = window.supabase.createClient(
         config.supabaseUrl,
-        config.supabaseAnonKey
-    );
+        config.supabaseAnonKey,
+        {
+            auth: {
+                storage: authStorage,
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        }
+);
 
     const carregarGovernantes = async (user) => {
         console.log('Usuário conectado:', user.id);
+
         const { data, error } = await client
-            .from('cidades')
+            .from('cidade_governanca')
             .select(`
                 id,
-                user_id,
-                world_id,
+                governante_user_id,
                 nome_governante,
-                nome_cidade,
                 nivel_governante,
-                nivel_cidade,
-                created_at
+                inicio_governo,
+                cidade:cidades!inner (
+                    id,
+                    user_id,
+                    world_id,
+                    nome_cidade,
+                    nivel_cidade
+                )
             `)
-            .eq('user_id', user.id)
-            .order('created_at', {
+            .eq('governante_user_id', user.id)
+            .eq('ativo', true)
+            .is('fim_governo', null)
+            .order('inicio_governo', {
                 ascending: true
             });
 
@@ -307,7 +353,18 @@ link.appendChild(nome);
             return;
         }
 
-        const governantes = Array.isArray(data) ? data : [];
+        const governantes = (Array.isArray(data) ? data : [])
+            .filter((registro) => registro.cidade)
+            .map((registro) => ({
+                id: registro.cidade.id,
+                user_id: registro.governante_user_id,
+                world_id: registro.cidade.world_id,
+                nome_governante: registro.nome_governante,
+                nome_cidade: registro.cidade.nome_cidade,
+                nivel_governante: registro.nivel_governante,
+                nivel_cidade: registro.cidade.nivel_cidade
+            }));
+
         console.log('Governantes carregados:', governantes);
 
         if (governantes.length === 0) {
@@ -319,7 +376,7 @@ link.appendChild(nome);
             user.id,
             governantes
         );
-    };
+};
 
     const loadSession = async () => {
         const { data, error } =

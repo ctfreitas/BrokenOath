@@ -475,13 +475,68 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
                 statusBox.hidden = true;
                 statusBox.textContent = '';
             };
-            const cityImages = {
-    1: 'assets/mapa/baronato.png',
-    2: 'assets/mapa/viscondado.png',
-    3: 'assets/mapa/condado.png',
-    4: 'assets/mapa/marca.png',
-    5: 'assets/mapa/ducado.png'
-};
+            const playerCityImages = {
+                1: 'assets/mapa/baronato.png',
+                2: 'assets/mapa/viscondado.png',
+                3: 'assets/mapa/condado.png',
+                4: 'assets/mapa/marca.png',
+                5: 'assets/mapa/ducado.png'
+            };
+
+            const mercImages = {
+                1: 'assets/mapa/npc_merc_n1.png',
+                2: 'assets/mapa/npc_merc_n2.png',
+                3: 'assets/mapa/npc_merc_n3.png',
+                4: 'assets/mapa/npc_merc_n4.png',
+                5: 'assets/mapa/npc_merc_n5.png'
+            };
+
+            const paciImages = {
+                1: 'assets/mapa/npc_paci_n1.png',
+                2: 'assets/mapa/npc_paci_n2.png',
+                3: 'assets/mapa/npc_paci_n3.png',
+                4: 'assets/mapa/npc_paci_n4.png',
+                5: 'assets/mapa/npc_paci_n5.png'
+            };
+
+            const barbImages = {
+                1: 'assets/mapa/npc_barb_n1.png',
+                2: 'assets/mapa/npc_barb_n2.png',
+                3: 'assets/mapa/npc_barb_n3.png',
+                4: 'assets/mapa/npc_barb_n4.png',
+                5: 'assets/mapa/npc_barb_n5.png'
+            };
+
+            function getCityImage(city, level) {
+
+                if (city.tipo_entidade === 'reino') {
+                    return 'assets/mapa/reinado.png';
+                }
+
+                if (city.tipo_entidade === 'fundacao') {
+                    return 'assets/mapa/fundacao.png';
+                }
+
+                if (city.tipo_entidade === 'npc') {
+
+                    switch ((city.perfil_cidade || '').toLowerCase()) {
+
+                        case 'mercantil':
+                            return mercImages[level];
+
+                        case 'pacificadora':
+                            return paciImages[level];
+
+                        case 'conquistadora':
+                            return barbImages[level];
+
+                        default:
+                            return barbImages[level];
+                    }
+                }
+
+                return playerCityImages[level];
+}
 
 const getCityLevel = (levelValue) => {
     const normalized = String(levelValue || '')
@@ -516,16 +571,9 @@ const renderCities = (coordinatesList) => {
         const city = coordinate.cidades;
         const map = coordinate.mapa_coordenadas;
 
-        if (!city || !map) {
+        if (!map) {
             continue;
         }
-
-        const level = getCityLevel(city.nivel_cidade);
-
-        const imagePath =
-            city.tipo_entidade === 'reino'
-                ? 'assets/mapa/reinado.png'
-                : cityImages[level];
 
         const logicalX = Number(map.x);
         const logicalY = Number(map.y);
@@ -537,15 +585,38 @@ const renderCities = (coordinatesList) => {
             continue;
         }
 
+        const isFoundation =
+            !city &&
+            String(coordinate.codigo_local || '').startsWith('FUND_');
+
+        let level = 1;
+        let imagePath = '';
+        let markerAlt = '';
+
+        if (isFoundation) {
+            imagePath = 'assets/mapa/fundacao.png';
+            markerAlt = `Fundação ${coordinate.categoria || ''}`;
+        } else if (city) {
+            level = getCityLevel(city.nivel_cidade);
+            imagePath = getCityImage(city, level);
+            markerAlt = `${city.nome_cidade || 'Cidade'} — nível ${level}`;
+        } else {
+            continue;
+        }
+
         const offsetX = Number(map.sprite_offset_x) || 0;
         const offsetY = Number(map.sprite_offset_y) || 0;
 
         const marker = document.createElement('img');
 
         marker.src = imagePath;
-        marker.alt = `${city.nome_cidade || 'Cidade'} — nível ${level}`;
+        marker.alt = markerAlt;
         marker.className = 'city-marker';
         marker.dataset.level = String(level);
+
+        if (isFoundation) {
+            marker.dataset.type = 'foundation';
+        }
 
         marker.style.left =
             `${(logicalX / logicalWidth) * 100}%`;
@@ -570,10 +641,7 @@ const renderCities = (coordinatesList) => {
         }
 
         marker.addEventListener('error', () => {
-            console.error(
-                `Imagem da cidade não encontrada: ${imagePath}`
-            );
-
+            console.error(`Imagem não encontrada: ${imagePath}`);
             marker.remove();
         });
 
@@ -660,10 +728,49 @@ const renderCities = (coordinatesList) => {
                     return;
                 }
 
+                const AUTH_REMEMBER_KEY = 'broken_oath_lembrar_login';
+
+                const authStorage = {
+                    getItem(key) {
+                        const remember =
+                            localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+                        return remember
+                            ? localStorage.getItem(key)
+                            : sessionStorage.getItem(key);
+                    },
+
+                    setItem(key, value) {
+                        const remember =
+                            localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+                        if (remember) {
+                            localStorage.setItem(key, value);
+                            sessionStorage.removeItem(key);
+                        } else {
+                            sessionStorage.setItem(key, value);
+                            localStorage.removeItem(key);
+                        }
+                    },
+
+                    removeItem(key) {
+                        localStorage.removeItem(key);
+                        sessionStorage.removeItem(key);
+                    }
+                };
+
                 client = window.supabase.createClient(
                     config.supabaseUrl,
-                    config.supabaseAnonKey
-                );
+                    config.supabaseAnonKey,
+                    {
+                        auth: {
+                            storage: authStorage,
+                            persistSession: true,
+                            autoRefreshToken: true,
+                            detectSessionInUrl: true
+                        }
+                    }
+);
 
                 const { data: sessionData, error: sessionError } = await client.auth.getSession();
 
@@ -730,6 +837,10 @@ const {
     .select(`
         mapa_id,
         cidade_id,
+        codigo_local,
+        categoria,
+        tipo_local,
+        regiao,
         mapa_coordenadas!inner (
             x,
             y,
@@ -739,23 +850,24 @@ const {
             sprite_height,
             world_id
         ),
-        cidades!inner (
+        cidades (
             id,
             world_id,
             nome_cidade,
             nome_governante,
             nivel_cidade,
+            perfil_cidade,
             tipo_entidade
         )
     `)
     .eq('mapa_coordenadas.world_id', activeWorldId)
-    .not('cidade_id', 'is', null);
+    .or('cidade_id.not.is.null,codigo_local.like.FUND_%');
 
 if (cityCoordinatesError) {
     console.error(cityCoordinatesError);
 
     showError(
-        'O mapa foi carregado, mas não foi possível carregar as cidades.'
+        'O mapa foi carregado, mas não foi possível carregar as cidades e fundações.'
     );
 
     return;

@@ -511,10 +511,49 @@ $configured = $supabaseUrl !== '' && $supabaseAnonKey !== '';
                     return;
                 }
 
+                const AUTH_REMEMBER_KEY = 'broken_oath_lembrar_login';
+
+                const authStorage = {
+                    getItem(key) {
+                        const remember =
+                            localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+                        return remember
+                            ? localStorage.getItem(key)
+                            : sessionStorage.getItem(key);
+                    },
+
+                    setItem(key, value) {
+                        const remember =
+                            localStorage.getItem(AUTH_REMEMBER_KEY) === '1';
+
+                        if (remember) {
+                            localStorage.setItem(key, value);
+                            sessionStorage.removeItem(key);
+                        } else {
+                            sessionStorage.setItem(key, value);
+                            localStorage.removeItem(key);
+                        }
+                    },
+
+                    removeItem(key) {
+                        localStorage.removeItem(key);
+                        sessionStorage.removeItem(key);
+                    }
+                };
+
                 client = window.supabase.createClient(
                     config.supabaseUrl,
-                    config.supabaseAnonKey
-                );
+                    config.supabaseAnonKey,
+                    {
+                        auth: {
+                            storage: authStorage,
+                            persistSession: true,
+                            autoRefreshToken: true,
+                            detectSessionInUrl: true
+                        }
+                    }
+);
 
                 const { data, error } = await client.auth.getSession();
 
